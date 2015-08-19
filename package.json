@@ -1,0 +1,22 @@
+{
+  "name": "dog-statsy",
+  "version": "0.0.1",
+  "repository": "segmentio/dog-statsy",
+  "description": "dogstatsd client",
+  "keywords": [
+    "datadog",
+    "dogstatsd",
+    "statsd"
+  ],
+  "dependencies": {
+    "debug": "~0.8.0",
+    "forward-events": "0.0.1"
+  },
+  "devDependencies": {
+    "mocha": "*"
+  },
+  "license": "MIT",
+  "files": [
+    "index.js"
+  ]
+}
