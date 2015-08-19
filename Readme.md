@@ -20,7 +20,8 @@ var stats = new Client;
 setInterval(function(){
   var start = new Date;
   http.get('http://yahoo.com', function(err, res){
-    stats.histogram('request.duration', ['request:yahoo']);
+    var ms = new Date - start;
+    stats.histogram('request.duration', ms, ['request:yahoo']);
   });
 }, 1000);
 
