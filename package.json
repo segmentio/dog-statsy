@@ -1,6 +1,6 @@
 {
   "name": "dog-statsy",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "repository": "segmentio/dog-statsy",
   "description": "dogstatsd client",
   "keywords": [
