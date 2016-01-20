@@ -35,3 +35,50 @@ describe('write', function(){
     ]);
   });
 });
+
+describe('incr', function(){
+  it('should write incr without tags or increments', function(){
+    stats.incr('key');
+    assert.deepEqual(args, [
+      ['key:1|c']
+    ]);
+  });
+
+  it('should write incr with an increment', function(){
+    stats.incr('key', 2);
+    assert.deepEqual(args, [
+      ['key:2|c']
+    ]);
+  });
+
+  it('should write incr with tags', function(){
+    stats.incr('key', 1, ['tag:local']);
+    assert.deepEqual(args, [
+      ['key:1|c|#tag:local']
+    ]);
+  })
+});
+
+describe('decr', function(){
+  it('should write decr without tags or increments', function(){
+    stats.decr('key');
+    assert.deepEqual(args, [
+      ['key:-1|c']
+    ]);
+  });
+
+  it('should write decr with an increment', function(){
+    stats.decr('key', 2);
+    assert.deepEqual(args, [
+      ['key:-2|c']
+    ]);
+  });
+
+  it('should write incr with tags', function(){
+    stats.decr('key', 1, ['tag:local']);
+    assert.deepEqual(args, [
+      ['key:-1|c|#tag:local']
+    ]);
+  })
+});
+

@@ -215,7 +215,7 @@ Client.prototype.count = function(name, val, sample, tags){
 
 Client.prototype.incr = function(name, val, tags){
   if (null == val) val = 1;
-  this.count(name, val, tags);
+  this.count(name, val, null, tags);
 };
 
 /**
@@ -229,5 +229,5 @@ Client.prototype.incr = function(name, val, tags){
 
 Client.prototype.decr = function(name, val, tags){
   if (null == val) val = 1;
-  this.count(name, -val, tags);
+  this.count(name, -val, null, tags);
 };
