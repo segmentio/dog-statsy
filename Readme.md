@@ -81,6 +81,17 @@ setInterval(function(){
 
  Return a trace object.
 
+
+### Trace
+
+### .step(name, [tags])
+
+ Adds a step to a trace.
+
+### .complete()
+
+ Completes a trace.
+
 # License
 
   MIT
