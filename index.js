@@ -10,6 +10,7 @@ var assert = require('assert');
 var dgram = require('dgram');
 var net = require('net');
 var url = require('url');
+var Trace = require('./trace');
 
 /**
  * Expose `Client`.
@@ -182,7 +183,7 @@ Client.prototype.histogram = function(name, val, tags){
   }
 
   debug('histogram %j %s', name, val);
-  this.write(name + ':' + val + '|ms', tags);
+  this.write(name + ':' + val + '|h', tags);
 };
 
 /**
@@ -230,4 +231,16 @@ Client.prototype.incr = function(name, val, tags){
 Client.prototype.decr = function(name, val, tags){
   if (null == val) val = 1;
   this.count(name, -val, null, tags);
+};
+
+/**
+ * Creates a trace object that generates stats on this client.
+ *
+ * @param {String} name The name of the new trace, prefix for all its stats.
+ * @param {Array} [tags] The default tags set to all stats of the trace.
+ * @param {Date} [now] The start time of the trace
+ */
+
+Client.prototype.trace = function(name, tags, now){
+  return new Trace(this, name, tags, now);
 };
