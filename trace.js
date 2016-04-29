@@ -1,7 +1,7 @@
 
 function Trace(client, name, tags, now) {
   if (!tags) {
-    tags = { };
+    tags = [ ];
   }
 
   if (!now) {
@@ -10,21 +10,20 @@ function Trace(client, name, tags, now) {
 
   this.client = client;
   this.name = name;
-  this.tags = tagsArray(tags);
+  this.tags = tags;
   this.start = now;
   this.items = [ ];
 }
 
 Trace.prototype.step = function(step, tags, now) {
   if (!tags) {
-    tags = { };
+    tags = [ ];
   }
 
   if (!now) {
     now = new Date;
   }
 
-  tags = tagsArray(tags);
   tags.push('step:' + step);
   this.items.push({ tags: tags, time: now });
 };
@@ -56,16 +55,6 @@ Trace.prototype.complete = function(now) {
 
   this.client = null;
 };
-
-function tagsArray(tags) {
-  var array = [ ];
-
-  Object.keys(tags).forEach(function(key) {
-    array.push(key + ':' + tags[key]);
-  });
-
-  return array;
-}
 
 function seconds(from, to) {
   return (to.getTime() - from.getTime()) / 1000.0;
