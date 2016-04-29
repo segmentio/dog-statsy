@@ -45,9 +45,9 @@ Trace.prototype.complete = function(now) {
     now = new Date;
   }
 
-  steps.forEach(function(item) {
-    stats.histogram(timer, seconds(ptime, item.time), tags.concat(item.tags));
-    ptime = item.time;
+  steps.forEach(function(step) {
+    stats.histogram(timer, seconds(ptime, step.time), tags.concat(step.tags));
+    ptime = step.time;
   });
 
   stats.histogram(timer, seconds(start, now), tags.concat('step:request'));
