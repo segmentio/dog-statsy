@@ -82,3 +82,28 @@ describe('decr', function(){
   })
 });
 
+describe('trace', function(){
+  it('should write an empty trace', function(){
+    var trace = stats.trace('key', { hello: 'world' }, new Date(1000));
+    trace.complete(new Date(2000));
+    assert.deepEqual(args, [
+      ['key.seconds:1|h|#hello:world,step:request'],
+      ['key.count:1|c|#hello:world']
+    ]);
+  });
+
+  it('shoudl write a trace with a couple of stats', function(){
+    var trace = stats.trace('key', { hello: 'world' }, new Date(1000));
+    trace.step('A', { tag: 'a' }, new Date(1100));
+    trace.step('B', { tag: 'b' }, new Date(1300));
+    trace.step('C', { tag: 'c' }, new Date(1600));
+    trace.complete(new Date(2000));
+    assert.deepEqual(args, [
+      ['key.seconds:0.1|h|#hello:world,tag:a,step:A'],
+      ['key.seconds:0.2|h|#hello:world,tag:b,step:B'],
+      ['key.seconds:0.3|h|#hello:world,tag:c,step:C'],
+      ['key.seconds:1|h|#hello:world,step:request'],
+      ['key.count:1|c|#hello:world']
+    ]);
+  });
+});
