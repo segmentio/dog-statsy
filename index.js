@@ -233,6 +233,14 @@ Client.prototype.decr = function(name, val, tags){
   this.count(name, -val, null, tags);
 };
 
+/**
+ * Creates a trace object that generates stats on this client.
+ *
+ * @param {String} name The name of the new trace, prefix for all its stats.
+ * @param {Array} [tags] The default tags set to all stats of the trace.
+ * @param {Date} [now] The start time of the trace
+ */
+
 Client.prototype.trace = function(name, tags, now){
   return new Trace(this, name, tags, now);
 };

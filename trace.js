@@ -1,11 +1,15 @@
 
 function Trace(client, name, tags, now) {
+  if (!name) {
+    throw new Error("traces cannot be created without a name")
+  }
+
   if (!tags) {
     tags = [ ];
   }
 
   if (!now) {
-    now = new Date;
+    now = Trace.now();
   }
 
   this.client = client;
@@ -21,7 +25,7 @@ Trace.prototype.step = function(step, tags, now) {
   }
 
   if (!now) {
-    now = new Date;
+    now = Trace.now();
   }
 
   tags.push('step:' + step);
@@ -38,11 +42,11 @@ Trace.prototype.complete = function(now) {
   var tags = this.tags;
 
   if (!stats) {
-    throw new Error("Trace.complete: called more than once");
+    throw new Error(this.name + ": Trace.complete called more than once");
   }
 
   if (!now) {
-    now = new Date;
+    now = Trace.now();
   }
 
   steps.forEach(function(step) {
@@ -55,6 +59,10 @@ Trace.prototype.complete = function(now) {
 
   this.client = null;
 };
+
+Trace.now = function() {
+  return new Date;
+}
 
 function seconds(from, to) {
   return (to.getTime() - from.getTime()) / 1000.0;
