@@ -12,7 +12,7 @@ function Trace(client, name, tags, now) {
   this.name = name;
   this.tags = tags;
   this.start = now;
-  this.items = [ ];
+  this.steps = [ ];
 }
 
 Trace.prototype.step = function(step, tags, now) {
@@ -25,7 +25,7 @@ Trace.prototype.step = function(step, tags, now) {
   }
 
   tags.push('step:' + step);
-  this.items.push({ tags: tags, time: now });
+  this.steps.push({ tags: tags, time: now });
 };
 
 Trace.prototype.complete = function(now) {
@@ -34,7 +34,7 @@ Trace.prototype.complete = function(now) {
   var start = this.start;
   var ptime = this.start;
   var stats = this.client;
-  var items = this.items;
+  var steps = this.steps;
   var tags = this.tags;
 
   if (!stats) {
@@ -45,7 +45,7 @@ Trace.prototype.complete = function(now) {
     now = new Date;
   }
 
-  items.forEach(function(item) {
+  steps.forEach(function(item) {
     stats.histogram(timer, seconds(ptime, item.time), tags.concat(item.tags));
     ptime = item.time;
   });
