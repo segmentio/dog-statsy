@@ -77,6 +77,10 @@ setInterval(function(){
 
  Return timer delta function.
 
+### .trace(name, [tags])
+
+ Return a trace object.
+
 # License
 
   MIT
