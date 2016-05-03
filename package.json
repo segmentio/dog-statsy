@@ -15,5 +15,5 @@
   "devDependencies": {
     "mocha": "*"
   },
-  "license": "MIT",
+  "license": "MIT"
 }
