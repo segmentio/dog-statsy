@@ -16,7 +16,4 @@
     "mocha": "*"
   },
   "license": "MIT",
-  "files": [
-    "index.js"
-  ]
 }
