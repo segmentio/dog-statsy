@@ -26,6 +26,21 @@ setInterval(function(){
 
 ```
 
+## Aggregation
+
+```js
+var statsy = require('dog-statsy');
+var client = statsy();
+var stats = statsy.aggregate(client);
+
+setInterval(function(){
+  stats.incr('requests');
+  http.get('https://google.com', function(err, res){
+    stats.incr('responses');
+  });
+});
+```
+
 ## API
 
 ### Client([opts])
