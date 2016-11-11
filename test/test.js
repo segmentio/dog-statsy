@@ -1,7 +1,7 @@
 
 var assert = require('assert');
-var statsy = require('./');
-var Trace = require('./trace')
+var statsy = require('..');
+var Trace = require('../lib/trace');
 var args;
 
 beforeEach(function(){
