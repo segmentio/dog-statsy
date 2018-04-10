@@ -5,9 +5,15 @@ var Trace = require('./trace')
 var args;
 
 beforeEach(function(){
-  stats = statsy();
+  stats = statsy({
+    bufferSize: 1024
+  });
   stats.send = function(){
-    args.push([].slice.call(arguments));
+    var lines = arguments[0].split('\n');
+    lines = lines.filter(function(s) { return s.length > 0; });
+    for (var i in lines) {
+      args.push(lines[i])
+    }
   };
   args = [];
 });
@@ -16,23 +22,26 @@ describe('write', function(){
   it('should include global tags', function(){
     stats.tags = ['tag:global'];
     stats.write('key:1|c');
+    stats.flush();
     assert.deepEqual(args, [
-      ['key:1|c|#tag:global']
+      'key:1|c|#tag:global'
     ]);
   });
 
   it('should include local tags', function(){
     stats.write('key:1|c', ['tag:local']);
+    stats.flush();
     assert.deepEqual(args, [
-      ['key:1|c|#tag:local']
+      'key:1|c|#tag:local'
     ]);
   });
 
   it('should combine local and global tags', function(){
     stats.tags = ['tag:global'];
     stats.write('key:1|c', ['tag:local']);
+    stats.flush();
     assert.deepEqual(args, [
-      ['key:1|c|#tag:global,tag:local']
+      'key:1|c|#tag:global,tag:local'
     ]);
   });
 });
@@ -40,22 +49,25 @@ describe('write', function(){
 describe('incr', function(){
   it('should write incr without tags or increments', function(){
     stats.incr('key');
+    stats.flush();
     assert.deepEqual(args, [
-      ['key:1|c']
+      'key:1|c'
     ]);
   });
 
   it('should write incr with an increment', function(){
     stats.incr('key', 2);
+    stats.flush();
     assert.deepEqual(args, [
-      ['key:2|c']
+      'key:2|c'
     ]);
   });
 
   it('should write incr with tags', function(){
     stats.incr('key', 1, ['tag:local']);
+    stats.flush();
     assert.deepEqual(args, [
-      ['key:1|c|#tag:local']
+      'key:1|c|#tag:local'
     ]);
   })
 });
@@ -63,22 +75,25 @@ describe('incr', function(){
 describe('decr', function(){
   it('should write decr without tags or increments', function(){
     stats.decr('key');
+    stats.flush();
     assert.deepEqual(args, [
-      ['key:-1|c']
+      'key:-1|c'
     ]);
   });
 
   it('should write decr with an increment', function(){
     stats.decr('key', 2);
+    stats.flush();
     assert.deepEqual(args, [
-      ['key:-2|c']
+      'key:-2|c'
     ]);
   });
 
   it('should write incr with tags', function(){
     stats.decr('key', 1, ['tag:local']);
+    stats.flush();
     assert.deepEqual(args, [
-      ['key:-1|c|#tag:local']
+      'key:-1|c|#tag:local'
     ]);
   })
 });
@@ -91,9 +106,10 @@ describe('trace', function(){
   it('should write an empty trace', function(){
     var trace = stats.trace('key', ['hello:world'], new Date(1000));
     trace.complete(new Date(2000));
+    stats.flush();
     assert.deepEqual(args, [
-      ['key.seconds:1|h|#hello:world,step:request'],
-      ['key.count:1|c|#hello:world']
+      'key.seconds:1|h|#hello:world,step:request',
+      'key.count:1|c|#hello:world'
     ]);
   });
 
@@ -103,12 +119,13 @@ describe('trace', function(){
     trace.step('B', ['tag:b'], new Date(1300));
     trace.step('C', ['tag:c'], new Date(1600));
     trace.complete(new Date(2000));
+    stats.flush();
     assert.deepEqual(args, [
-      ['key.seconds:0.1|h|#hello:world,tag:a,step:A'],
-      ['key.seconds:0.2|h|#hello:world,tag:b,step:B'],
-      ['key.seconds:0.3|h|#hello:world,tag:c,step:C'],
-      ['key.seconds:1|h|#hello:world,step:request'],
-      ['key.count:1|c|#hello:world']
+      'key.seconds:0.1|h|#hello:world,tag:a,step:A',
+      'key.seconds:0.2|h|#hello:world,tag:b,step:B',
+      'key.seconds:0.3|h|#hello:world,tag:c,step:C',
+      'key.seconds:1|h|#hello:world,step:request',
+      'key.count:1|c|#hello:world'
     ]);
   });
 
@@ -128,12 +145,14 @@ describe('trace', function(){
     Trace.now = function() { return new Date(2000) };
     trace.complete();
 
+    stats.flush();
+
     assert.deepEqual(args, [
-      ['key.seconds:0.1|h|#step:A'],
-      ['key.seconds:0.2|h|#step:B'],
-      ['key.seconds:0.3|h|#step:C'],
-      ['key.seconds:1|h|#step:request'],
-      ['key.count:1|c|#'],
+      'key.seconds:0.1|h|#step:A',
+      'key.seconds:0.2|h|#step:B',
+      'key.seconds:0.3|h|#step:C',
+      'key.seconds:1|h|#step:request',
+      'key.count:1|c|#',
     ]);
   });
 });

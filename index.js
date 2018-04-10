@@ -99,6 +99,7 @@ Client.prototype.write = function(msg, tags){
     }
     this.buffer += msg;
     this.buffer += '\n';
+    return;
   }
 
   this.send(msg);
