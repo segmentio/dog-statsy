@@ -32,6 +32,8 @@ function Client(opts) {
   this.port = opts.port || 8125;
   this.prefix = opts.prefix;
   this.tags = opts.tags || [];
+  this.buffer = '';
+  this.bufferSize = opts.bufferSize;
   this.on('error', this.onerror.bind(this));
   this.connect();
 }
@@ -91,8 +93,27 @@ Client.prototype.write = function(msg, tags){
     msg += "|#" + tags.join(',');
   }
 
+  if (this.bufferSize && this.bufferSize > 0) {
+    if ((this.buffer.length + msg.length) > this.bufferSize) {
+      this.flush();
+    }
+    this.buffer += msg;
+    this.buffer += '\n';
+  }
+
   this.send(msg);
 };
+
+/**
+ * Flush buffered data, this method is a no-op if buffering is disabled.
+ */
+
+Client.prototype.flush = function() {
+  if (this.buffer.length > 0) {
+    this.send(this.buffer);
+    this.buffer = '';
+  }
+}
 
 /**
  * Send a gauge value.
