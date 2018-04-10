@@ -1,4 +1,11 @@
 
+1.2.0 / 2018-04-09
+==================
+
+  * update build environment to ubuntu 14
+  * fix tests
+  * add buffering
+
 1.1.1 / 2016-05-02
 ==================
 
