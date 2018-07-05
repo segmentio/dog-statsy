@@ -49,12 +49,10 @@ describe('write', function(){
     stats.flushAfter = 5000;
     stats.bufferSize = 30000;
     stats.write('key:1|c', ['tag:local']);
-    assert.deepEqual(args, []);
+    assert.deepEqual(args, []); // Empty before flush.
 
     setTimeout(function(){
-      stats.write('key:1|c', ['tag:local']);
       assert.deepEqual(args, [
-        'key:1|c|#tag:local',
         'key:1|c|#tag:local'
       ]);
       done();

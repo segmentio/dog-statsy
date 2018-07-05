@@ -35,6 +35,7 @@ function Client(opts) {
   this.bufferSize = opts.bufferSize;
   this.flushAfter = opts.flushAfter || null; // In ms
   this.lastFlushed = new Date();
+  this.flushScheduled = false;
   this.on('error', this.onerror.bind(this));
   this.connect();
 }
@@ -87,7 +88,6 @@ Client.prototype.send = function(msg){
 
 Client.prototype.write = function(msg, tags){
   var doNotSend = false;
-  var alreadyFlushed = false;
   var alreadyAddedToBuffer = false;
 
   if (this.prefix) msg = this.prefix + '.' + msg;
@@ -102,7 +102,6 @@ Client.prototype.write = function(msg, tags){
   if (this.bufferSize && this.bufferSize > 0) {
     if ((this.buffer.length + msg.length) > this.bufferSize) {
       this.flush();
-      alreadyFlushed = true;
     }
     this.buffer += msg;
     this.buffer += '\n';
@@ -111,18 +110,22 @@ Client.prototype.write = function(msg, tags){
   }
 
   // Exceeds flushAfter timeout
-  if (this.flushAfter && (new Date() - this.lastFlushed) > this.flushAfter) {
+  if (this.flushAfter && this.flushAfter > 0) {
     // We know we're under the max buffer size.
     if (!alreadyAddedToBuffer) {
       this.buffer += msg;
       alreadyAddedToBuffer = true;
     }
 
-    if (!alreadyFlushed) {
-      this.flush();
-      alreadyFlushed = true;
+    if (!this.flushScheduled) {
+      var self = this; // Assuming arrow functions are a no-no.
+      setTimeout(function(){
+        self.flush()
+      }, self.flushAfter)
+
+      this.flushScheduled = true;
     }
-    
+
     doNotSend = true;
   }
 
@@ -139,6 +142,8 @@ Client.prototype.flush = function() {
     this.buffer = '';
     this.lastFlushed = new Date();
   }
+
+  this.flushScheduled = false;
 }
 
 /**
