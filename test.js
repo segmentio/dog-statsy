@@ -44,6 +44,22 @@ describe('write', function(){
       'key:1|c|#tag:global,tag:local'
     ]);
   });
+
+  it('should flush if flushAfter is exceeded', function(done){
+    stats.flushAfter = 5000;
+    stats.bufferSize = 30000;
+    stats.write('key:1|c', ['tag:local']);
+    assert.deepEqual(args, []);
+
+    setTimeout(function(){
+      stats.write('key:1|c', ['tag:local']);
+      assert.deepEqual(args, [
+        'key:1|c|#tag:local',
+        'key:1|c|#tag:local'
+      ]);
+      done();
+    }, 6000)
+  }).timeout(6500);
 });
 
 describe('incr', function(){
