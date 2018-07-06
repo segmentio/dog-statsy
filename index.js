@@ -87,7 +87,7 @@ Client.prototype.send = function(msg){
  */
 
 Client.prototype.write = function(msg, tags){
-  var doNotSend = false;
+  var sendMsg = true;
   var alreadyAddedToBuffer = false;
 
   if (this.prefix) msg = this.prefix + '.' + msg;
@@ -106,7 +106,7 @@ Client.prototype.write = function(msg, tags){
     this.buffer += msg;
     this.buffer += '\n';
     alreadyAddedToBuffer = true;
-    doNotSend = true;
+    sendMsg = false;
   }
 
   // Exceeds flushAfter timeout
@@ -126,10 +126,10 @@ Client.prototype.write = function(msg, tags){
       this.flushScheduled = true;
     }
 
-    doNotSend = true;
+    sendMsg = false;
   }
 
-  if (!doNotSend) this.send(msg);
+  if (sendMsg) this.send(msg);
 };
 
 /**
