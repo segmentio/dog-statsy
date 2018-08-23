@@ -31,9 +31,15 @@ function Client(opts) {
   this.port = opts.port || 8125;
   this.prefix = opts.prefix;
   this.tags = opts.tags || [];
+  this.flushInterval = opts.flushInterval || 0;
   this.buffer = '';
   this.bufferSize = opts.bufferSize;
   this.on('error', this.onerror.bind(this));
+
+  if (this.bufferSize > 0 && this.flushInterval > 0) {
+    setInterval(() => this.flush(), this.flushInterval)
+  }
+
   this.connect();
 }
 
@@ -112,6 +118,7 @@ Client.prototype.flush = function() {
   if (this.buffer.length > 0) {
     this.send(this.buffer);
     this.buffer = '';
+    this.emit('flush');
   }
 }
 

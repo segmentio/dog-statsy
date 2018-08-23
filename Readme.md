@@ -36,6 +36,9 @@ setInterval(function(){
  - `port` [8125]
  - `prefix` optional prefix ('.' is appended)
  - `tags` array of tags to include in every call
+ - `bufferSize` optional buffer size, if not defined, it will send the data immediately
+ - `flushInterval` optional, only valid when bufferSize is defined. It will flush the buffer after the
+ interval in miliseconds (if not empty)
 
 ### .gauge(name, val, [tags])
 
