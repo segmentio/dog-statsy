@@ -116,9 +116,9 @@ Client.prototype.write = function(msg, tags){
 
 Client.prototype.flush = function() {
   if (this.buffer.length > 0) {
-    this.emit('flush');
     this.send(this.buffer);
     this.buffer = '';
+    this.emit('flush');
   }
 }
 
