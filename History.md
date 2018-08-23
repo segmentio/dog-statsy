@@ -1,7 +1,13 @@
 
+1.2.1 / 2018-08-22
+==================
+
+  * Implement flush interval (#5)
+
 1.2.0 / 2018-04-09
 ==================
 
+  * update package.json
   * update build environment to ubuntu 14
   * fix tests
   * add buffering
