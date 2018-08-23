@@ -156,3 +156,23 @@ describe('trace', function(){
     ]);
   });
 });
+
+describe('flush', function () {
+  it('should be called if flushInterval is exceeded', function(done){
+    const interval = 1000;
+    const stats = new statsy({
+      bufferSize: 1024,
+      flushInterval: interval
+    });
+    stats.on('flush', done);
+    stats.send = function(){
+      var lines = arguments[0].split('\n');
+      lines = lines.filter(function(s) { return s.length > 0; });
+      for (var i in lines) {
+        args.push(lines[i])
+      }
+    };
+    args = [];
+    stats.incr('key', 1, ['tag:local']);
+  }).timeout(3000);
+});
