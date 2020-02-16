@@ -1,274 +1,228 @@
-/**
- * Module dependencies.
- */
+const EventEmitter = require('events')
+const dgram = require('dgram')
+const net = require('net')
+const Trace = require('./trace')
 
-var Emitter = require('events').EventEmitter;
-var debug = require('debug')('dog-statsy');
-var fwd = require('forward-events');
-var assert = require('assert');
-var dgram = require('dgram');
-var net = require('net');
-var url = require('url');
-var Trace = require('./trace');
+class Client extends EventEmitter {
+  constructor({ host, port, prefix, tags, flushInterval, bufferSize }) {
+    super()
+    this.host = host || 'localhost'
+    this.port = port || 8125
+    this.prefix = prefix
+    this.tags = tags || []
+    this.flushInterval = null
+    this.buffer = ''
+    this.bufferSize = bufferSize || 1024
+    this.sock = dgram.createSocket('udp4')
+    this.sock.connect(this.port, this.host)
 
-/**
- * Expose `Client`.
- */
+    const events = ['close', 'connect', 'error', 'message']
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i]
+      this.sock.on(event, (...args) => this.emit(event, ...args))
+    }
 
-module.exports = Client;
-
-/**
- * Initialize a new `Client` with `opts`.
- *
- * @param {Object} [opts]
- * @api public
- */
-
-function Client(opts) {
-  if (!(this instanceof Client)) return new Client(opts);
-  opts = opts || {};
-  this.host = opts.host || 'localhost';
-  this.port = opts.port || 8125;
-  this.prefix = opts.prefix;
-  this.tags = opts.tags || [];
-  this.flushInterval = opts.flushInterval || 0;
-  this.buffer = '';
-  this.bufferSize = opts.bufferSize;
-  this.on('error', this.onerror.bind(this));
-
-  if (this.bufferSize > 0 && this.flushInterval > 0) {
-    setInterval(() => this.flush(), this.flushInterval)
+    this.setFlushInterval(flushInterval)
   }
 
-  this.connect();
+  /**
+   * Set the buffer flush interval as a number of milliseconds.
+   *
+   * @param {Number} msec The time interval for buffer flushes, or a falsy value
+   * to disable buffer flushing.
+   */
+  setFlushInterval(msec) {
+    if (this.flushInterval) {
+      clearInterval(this.flushInterval)
+    }
+    if (msec) {
+      this.flushInterval = setInterval(() => this.flush(), msec)
+    } else {
+      this.flushInterval = null
+    }
+  }
+
+  /**
+   * Closes the underlying socket, preventing the client from sending messages.
+   */
+  close() {
+    this.sock.close()
+  }
+
+  /**
+   * Send with prefix when specified.
+   *
+   * @param {String} msg
+   * @param {Array} tags
+   * @api private
+   */
+  write(msg, tags) {
+    if (this.prefix) {
+      msg = this.prefix + '.' + msg
+    }
+
+    if (tags || this.tags.length) {
+      tags = tags || []
+      tags = this.tags.concat(tags)
+      msg += "|#" + tags.join(',')
+    }
+
+    if (this.bufferSize && this.bufferSize > 0) {
+      if ((this.buffer.length + msg.length) > this.bufferSize) {
+        this.flush()
+      }
+      this.buffer += msg
+      this.buffer += '\n'
+      return
+    }
+
+    this.sock.send(msg)
+  }
+
+  /**
+   * Flush buffered data, this method is a no-op if buffering is disabled.
+   */
+  flush() {
+    if (this.buffer.length > 0) {
+      this.sock.send(this.buffer)
+      this.buffer = ''
+      this.emit('flush')
+    }
+  }
+
+  /**
+   * Send a gauge value.
+   *
+   * @param {String} name
+   * @param {Number} val
+   * @param {Array} tags
+   * @api public
+   */
+  gauge(name, val, tags) {
+    this.write(name + ':' + val + '|g', tags)
+  }
+
+  /**
+   * Send a set value.
+   *
+   * @param {String} name
+   * @param {Number} val
+   * @param {Array} tags
+   * @api public
+   */
+  set(name, val, tags) {
+    this.write(name + ':' + val + '|s', tags)
+  }
+
+  /**
+   * Send a meter value.
+   *
+   * @param {String} name
+   * @param {Number} val
+   * @param {Array} tags
+   * @api public
+   */
+  meter(name, val, tags) {
+    this.write(name + ':' + val + '|m', tags)
+  }
+
+  /**
+   * Send a timer value or omit the value
+   * to return a completion function.
+   *
+   * @param {String} name
+   * @param {Number} [val]
+   * @param {Array} tags
+   * @return {Function}
+   * @api public
+   */
+  timer(name, val, tags) {
+    if (arguments.length === 1) {
+      // Note: this behavior is kind of broken because we can't specify tags,
+      // but we retain it in case some programs are depending on it.
+      const start = new Date
+      return () => this.timer(name, new Date - start)
+    }
+    this.write(name + ':' + val + '|ms', tags)
+  }
+
+  /**
+   * Send a histogram value or omit the value
+   * to return a completion function.
+   *
+   * @param {String} name
+   * @param {Number} [val]
+   * @param {Array} tags
+   * @return {Function}
+   * @api public
+   */
+  histogram(name, val, tags) {
+    if (arguments.length === 1) {
+      // Note: this behavior is kind of broken because we can't specify tags,
+      // but we retain it in case some programs are depending on it.
+      const start = new Date
+      return () => self.histogram(name, new Date - start)
+    }
+    this.write(name + ':' + val + '|h', tags)
+  }
+
+  /**
+   * Send a counter value with optional sample rate.
+   *
+   * @param {String} name
+   * @param {Number} val
+   * @param {Number} sample
+   * @param {Array} tags
+   * @api public
+   */
+  count(name, val, sample, tags) {
+    if (sample) {
+      this.write(name + ':' + val + '|c|@' + sample, tags)
+    } else {
+      this.write(name + ':' + val + '|c', tags)
+    }
+  }
+
+  /**
+   * Increment counter by `val` or 1.
+   *
+   * @param {String} name
+   * @param {Number} val
+   * @param {Array} tags
+   * @api public
+   */
+  incr(name, val, tags) {
+    if (val == null) { // check for null-like values (e.g. undefined)
+      val = 1
+    }
+    this.count(name, val, null, tags)
+  }
+
+  /**
+   * Decrement counter by `val` or 1.
+   *
+   * @param {String} name
+   * @param {Number} val
+   * @param {Array} tags
+   * @api public
+   */
+  decr(name, val, tags) {
+    if (null == val) { // check for null-like values (e.g. undefined)
+      val = 1
+    }
+    this.count(name, -val, null, tags)
+  }
+
+  /**
+   * Creates a trace object that generates stats on this client.
+   *
+   * @param {String} name The name of the new trace, prefix for all its stats.
+   * @param {Array} [tags] The default tags set to all stats of the trace.
+   * @param {Date} [now] The start time of the trace
+   */
+  trace(name, tags, now) {
+    return new Trace(this, name, tags, now)
+  }
 }
 
-/**
- * Inherit from `Emitter.prototype`.
- */
-
-Client.prototype.__proto__ = Emitter.prototype;
-
-/**
- * Noop errors.
- */
-
-Client.prototype.onerror = function(err){
-  debug('error %s', err.stack);
-};
-
-/**
- * Connect via UDP.
- *
- * @api private
- */
-
-Client.prototype.connect = function(){
-  this.sock = dgram.createSocket('udp4');
-  fwd(this.sock, this);
-};
-
-/**
- * Send `msg`.
- *
- * @param {String} msg
- * @api private
- */
-
-Client.prototype.send = function(msg){
-  var sock = this.sock;
-  var buf = new Buffer(msg);
-  sock.send(buf, 0, buf.length, this.port, this.host);
-};
-
-/**
- * Send with prefix when specified.
- *
- * @param {String} msg
- * @param {Array} tags
- * @api private
- */
-
-Client.prototype.write = function(msg, tags){
-  if (this.prefix) msg = this.prefix + '.' + msg;
-
-  if (tags || this.tags.length) {
-    tags = tags || [];
-    tags = this.tags.concat(tags);
-    msg += "|#" + tags.join(',');
-  }
-
-  if (this.bufferSize && this.bufferSize > 0) {
-    if ((this.buffer.length + msg.length) > this.bufferSize) {
-      this.flush();
-    }
-    this.buffer += msg;
-    this.buffer += '\n';
-    return;
-  }
-
-  this.send(msg);
-};
-
-/**
- * Flush buffered data, this method is a no-op if buffering is disabled.
- */
-
-Client.prototype.flush = function() {
-  if (this.buffer.length > 0) {
-    this.send(this.buffer);
-    this.buffer = '';
-    this.emit('flush');
-  }
-}
-
-/**
- * Send a gauge value.
- *
- * @param {String} name
- * @param {Number} val
- * @param {Array} tags
- * @api public
- */
-
-Client.prototype.gauge = function(name, val, tags){
-  debug('gauge %j %s', name, val);
-  this.write(name + ':' + val + '|g', tags);
-};
-
-/**
- * Send a set value.
- *
- * @param {String} name
- * @param {Number} val
- * @param {Array} tags
- * @api public
- */
-
-Client.prototype.set = function(name, val, tags){
-  debug('set %j %s', name, val);
-  this.write(name + ':' + val + '|s', tags);
-};
-
-/**
- * Send a meter value.
- *
- * @param {String} name
- * @param {Number} val
- * @param {Array} tags
- * @api public
- */
-
-Client.prototype.meter = function(name, val, tags){
-  debug('meter %j %s', name, val);
-  this.write(name + ':' + val + '|m', tags);
-};
-
-/**
- * Send a timer value or omit the value
- * to return a completion function.
- *
- * @param {String} name
- * @param {Number} [val]
- * @param {Array} tags
- * @return {Function}
- * @api public
- */
-
-Client.prototype.timer = function(name, val, tags){
-  var self = this;
-
-  if (1 == arguments.length) {
-    var start = new Date;
-    return function(){
-      self.timer(name, new Date - start);
-    }
-  }
-
-  debug('timer %j %s', name, val);
-  this.write(name + ':' + val + '|ms', tags);
-};
-
-/**
- * Send a histogram value or omit the value
- * to return a completion function.
- *
- * @param {String} name
- * @param {Number} [val]
- * @param {Array} tags
- * @return {Function}
- * @api public
- */
-
-Client.prototype.histogram = function(name, val, tags){
-  var self = this;
-
-  if (1 == arguments.length) {
-    var start = new Date;
-    return function(){
-      self.histogram(name, new Date - start);
-    }
-  }
-
-  debug('histogram %j %s', name, val);
-  this.write(name + ':' + val + '|h', tags);
-};
-
-/**
- * Send a counter value with optional sample rate.
- *
- * @param {String} name
- * @param {Number} val
- * @param {Number} sample
- * @param {Array} tags
- * @api public
- */
-
-Client.prototype.count = function(name, val, sample, tags){
-  debug('count %j %s sample=%s', name, val, sample);
-  if (sample) {
-    this.write(name + ':' + val + '|c|@' + sample, tags);
-  } else {
-    this.write(name + ':' + val + '|c', tags);
-  }
-};
-
-/**
- * Increment counter by `val` or 1.
- *
- * @param {String} name
- * @param {Number} val
- * @param {Array} tags
- * @api public
- */
-
-Client.prototype.incr = function(name, val, tags){
-  if (null == val) val = 1;
-  this.count(name, val, null, tags);
-};
-
-/**
- * Decrement counter by `val` or 1.
- *
- * @param {String} name
- * @param {Number} val
- * @param {Array} tags
- * @api public
- */
-
-Client.prototype.decr = function(name, val, tags){
-  if (null == val) val = 1;
-  this.count(name, -val, null, tags);
-};
-
-/**
- * Creates a trace object that generates stats on this client.
- *
- * @param {String} name The name of the new trace, prefix for all its stats.
- * @param {Array} [tags] The default tags set to all stats of the trace.
- * @param {Date} [now] The start time of the trace
- */
-
-Client.prototype.trace = function(name, tags, now){
-  return new Trace(this, name, tags, now);
-};
+module.exports = Client
