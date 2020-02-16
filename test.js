@@ -1,178 +1,193 @@
+const test = require('ava')
+const dgram = require('dgram')
+const Client = require('./')
+const Trace = require('./trace')
 
-var assert = require('assert');
-var statsy = require('./');
-var Trace = require('./trace');
-var args;
+function createClient() {
+  return new Promise((resolve, reject) => {
+    const server = dgram.createSocket('udp4')
+    server.bind(0, '127.0.0.1')
 
-beforeEach(function(){
-  stats = statsy({
-    bufferSize: 1024
-  });
-  stats.send = function(){
-    var lines = arguments[0].split('\n');
-    lines = lines.filter(function(s) { return s.length > 0; });
-    for (var i in lines) {
-      args.push(lines[i]);
-    }
-  };
-  args = [];
-});
+    server.on('listening', () => {
+      const address = server.address();
+      const client = new Client({
+        host: address.address,
+        port: address.port,
+        bufferSize: 32768,
+      })
 
-describe('write', function(){
-  it('should include global tags', function(){
-    stats.tags = ['tag:global'];
-    stats.write('key:1|c');
-    stats.flush();
-    assert.deepEqual(args, [
-      'key:1|c|#tag:global'
-    ]);
-  });
+      const messages = new Promise((resolve, reject) => {
+        server.on('message', (msg) => {
+          resolve(msg.toString().split('\n').filter(function(s) { return s.length > 0 }))
+        })
+      })
 
-  it('should include local tags', function(){
-    stats.write('key:1|c', ['tag:local']);
-    stats.flush();
-    assert.deepEqual(args, [
-      'key:1|c|#tag:local'
-    ]);
-  });
-
-  it('should combine local and global tags', function(){
-    stats.tags = ['tag:global'];
-    stats.write('key:1|c', ['tag:local']);
-    stats.flush();
-    assert.deepEqual(args, [
-      'key:1|c|#tag:global,tag:local'
-    ]);
-  });
-});
-
-describe('incr', function(){
-  it('should write incr without tags or increments', function(){
-    stats.incr('key');
-    stats.flush();
-    assert.deepEqual(args, [
-      'key:1|c'
-    ]);
-  });
-
-  it('should write incr with an increment', function(){
-    stats.incr('key', 2);
-    stats.flush();
-    assert.deepEqual(args, [
-      'key:2|c'
-    ]);
-  });
-
-  it('should write incr with tags', function(){
-    stats.incr('key', 1, ['tag:local']);
-    stats.flush();
-    assert.deepEqual(args, [
-      'key:1|c|#tag:local'
-    ]);
+      resolve({ client, messages })
+    })
   })
-});
+}
 
-describe('decr', function(){
-  it('should write decr without tags or increments', function(){
-    stats.decr('key');
-    stats.flush();
-    assert.deepEqual(args, [
-      'key:-1|c'
-    ]);
-  });
+test('messages include global tags', async t => {
+  const { client, messages } = await createClient()
+  client.tags = ['tag:global']
+  client.write('key:1|c')
+  client.flush()
+  t.deepEqual(await messages, [
+    'key:1|c|#tag:global',
+  ])
+})
 
-  it('should write decr with an increment', function(){
-    stats.decr('key', 2);
-    stats.flush();
-    assert.deepEqual(args, [
-      'key:-2|c'
-    ]);
-  });
+test('messages include local tags', async t => {
+  const { client, messages } = await createClient()
+  client.write('key:1|c', ['tag:local'])
+  client.flush()
+  t.deepEqual(await messages, [
+    'key:1|c|#tag:local',
+  ])
+})
 
-  it('should write incr with tags', function(){
-    stats.decr('key', 1, ['tag:local']);
-    stats.flush();
-    assert.deepEqual(args, [
-      'key:-1|c|#tag:local'
-    ]);
-  })
-});
+test('messages combine local and global tags', async t => {
+  const { client, messages } = await createClient()
+  client.tags = ['tag:global']
+  client.write('key:1|c', ['tag:local'])
+  client.flush()
+  t.deepEqual(await messages, [
+    'key:1|c|#tag:global,tag:local',
+  ])
+})
 
-describe('trace', function(){
-  it('should throw an error if the trace name is not specified', function(){
-    assert.throws(stats.trace, Error, 'createing a trace with no name should throw an error');
-  });
+test('write counter increment with default value and no tags', async t => {
+  const { client, messages } = await createClient()
+  client.incr('key')
+  client.flush()
+  const args = await messages
+  t.deepEqual(await messages, [
+    'key:1|c',
+  ])
+})
 
-  it('should write an empty trace', function(){
-    var trace = stats.trace('key', ['hello:world'], new Date(1000));
-    trace.complete(new Date(2000));
-    stats.flush();
-    assert.deepEqual(args, [
-      'key.seconds:1|h|#hello:world,step:request',
-      'key.count:1|c|#hello:world'
-    ]);
-  });
+test('write counter increment with a value and no tags', async t => {
+  const { client, messages } = await createClient()
+  client.incr('key', 2)
+  client.flush()
+  const args = await messages
+  t.deepEqual(await messages, [
+    'key:2|c',
+  ])
+})
 
-  it('should write a trace with a couple of stats', function(){
-    var trace = stats.trace('key', ['hello:world'], new Date(1000));
-    trace.step('A', ['tag:a'], new Date(1100));
-    trace.step('B', ['tag:b'], new Date(1300));
-    trace.step('C', ['tag:c'], new Date(1600));
-    trace.complete(new Date(2000));
-    stats.flush();
-    assert.deepEqual(args, [
-      'key.seconds:0.1|h|#hello:world,tag:a,step:A',
-      'key.seconds:0.2|h|#hello:world,tag:b,step:B',
-      'key.seconds:0.3|h|#hello:world,tag:c,step:C',
-      'key.seconds:1|h|#hello:world,step:request',
-      'key.count:1|c|#hello:world'
-    ]);
-  });
+test('write counter increment with a value and tags', async t => {
+  const { client, messages } = await createClient()
+  client.incr('key', 1, ['tag:local'])
+  client.flush()
+  t.deepEqual(await messages, [
+    'key:1|c|#tag:local',
+  ])
+})
 
-  it('should write a trace with default tags and date', function(){
-    Trace.now = function() { return new Date(1000) };
-    var trace = stats.trace('key');
+test('write a counter decrement with default value and no tags', async t => {
+  const { client, messages } = await createClient()
+  client.decr('key')
+  client.flush()
+  t.deepEqual(await messages, [
+    'key:-1|c'
+  ])
+})
 
-    Trace.now = function() { return new Date(1100) };
-    trace.step('A');
+test('write a counter decrement with a value and no tags', async t => {
+  const { client, messages } = await createClient()
+  client.decr('key', 2)
+  client.flush()
+  t.deepEqual(await messages, [
+    'key:-2|c',
+  ])
+})
 
-    Trace.now = function() { return new Date(1300) };
-    trace.step('B');
+test('write a gauge assignment with a value and tags', async t => {
+  const { client, messages } = await createClient()
+  client.gauge('key', 42, ['A:1', 'B:2', 'C:3'])
+  client.flush()
+  t.deepEqual(await messages, [
+    'key:42|g|#A:1,B:2,C:3',
+  ])
+})
 
-    Trace.now = function() { return new Date(1600) };
-    trace.step('C');
+test('write a histogram measures with tags', async t => {
+  const { client, messages } = await createClient()
+  client.histogram('key', 0.1234, ['A:1', 'B:2', 'C:3'])
+  client.flush()
+  t.deepEqual(await messages, [
+    'key:0.1234|h|#A:1,B:2,C:3',
+  ])
+})
 
-    Trace.now = function() { return new Date(2000) };
-    trace.complete();
+test('should throw an error if the trace name is not specified', t => {
+  const client = new Client({})
+  t.throws(() => client.trace())
+})
 
-    stats.flush();
+test('write an empty trace', async t => {
+  const { client, messages } = await createClient()
+  const trace = client.trace('key', ['hello:world'], new Date(1000))
+  trace.complete(new Date(2000))
+  client.flush()
+  t.deepEqual(await messages, [
+    'key.seconds:1|h|#hello:world,step:request',
+    'key.count:1|c|#hello:world',
+  ])
+})
 
-    assert.deepEqual(args, [
-      'key.seconds:0.1|h|#step:A',
-      'key.seconds:0.2|h|#step:B',
-      'key.seconds:0.3|h|#step:C',
-      'key.seconds:1|h|#step:request',
-      'key.count:1|c|#',
-    ]);
-  });
-});
+test('write a trace with a couple of stats', async t => {
+  const { client, messages } = await createClient()
+  const trace = client.trace('key', ['hello:world'], new Date(1000))
+  trace.step('A', ['tag:a'], new Date(1100))
+  trace.step('B', ['tag:b'], new Date(1300))
+  trace.step('C', ['tag:c'], new Date(1600))
+  trace.complete(new Date(2000))
+  client.flush()
+  t.deepEqual(await messages, [
+    'key.seconds:0.1|h|#hello:world,tag:a,step:A',
+    'key.seconds:0.2|h|#hello:world,tag:b,step:B',
+    'key.seconds:0.3|h|#hello:world,tag:c,step:C',
+    'key.seconds:1|h|#hello:world,step:request',
+    'key.count:1|c|#hello:world',
+  ])
+})
 
-describe('flush', function () {
-  it('should be called if flushInterval is exceeded', function(done) {
-    const interval = 1000;
-    const stats = new statsy({
-      bufferSize: 1024,
-      flushInterval: interval
-    });
-    stats.on('flush', done);
-    stats.send = function(){
-      var lines = arguments[0].split('\n');
-      lines = lines.filter(function(s) { return s.length > 0; });
-      for (var i in lines) {
-        args.push(lines[i]);
-      }
-    };
-    args = [];
-    stats.incr('key', 1, ['tag:local']);
-  }).timeout(3000);
-});
+test('should write a trace with default tags and date', async t => {
+  const { client, messages } = await createClient()
+
+  Trace.now = function() { return new Date(1000) }
+  const trace = client.trace('key')
+
+  Trace.now = function() { return new Date(1100) }
+  trace.step('A')
+
+  Trace.now = function() { return new Date(1300) }
+  trace.step('B')
+
+  Trace.now = function() { return new Date(1600) }
+  trace.step('C')
+
+  Trace.now = function() { return new Date(2000) }
+  trace.complete()
+
+  client.flush()
+
+  t.deepEqual(await messages, [
+    'key.seconds:0.1|h|#step:A',
+    'key.seconds:0.2|h|#step:B',
+    'key.seconds:0.3|h|#step:C',
+    'key.seconds:1|h|#step:request',
+    'key.count:1|c|#',
+  ])
+})
+
+test('messages are flushed when the flush interval is exceeded', async t => {
+  const { client, messages } = await createClient()
+  client.setFlushInterval(500) // 0.5s
+  client.incr('key', 1, ['tag:local'])
+  t.deepEqual(await messages, [
+    'key:1|c|#tag:local',
+  ])
+})

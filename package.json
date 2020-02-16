@@ -1,6 +1,6 @@
 {
   "name": "dog-statsy",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "repository": "segmentio/dog-statsy",
   "description": "dogstatsd client",
   "keywords": [
@@ -8,12 +8,9 @@
     "dogstatsd",
     "statsd"
   ],
-  "dependencies": {
-    "debug": "^2.6.9",
-    "forward-events": "0.0.1"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "mocha": "*"
+    "ava": "^3.3.0"
   },
   "license": "MIT"
 }
