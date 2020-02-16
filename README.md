@@ -11,18 +11,17 @@ $ npm install dog-statsy
 ## Example
 
 ```js
-
-var Client = require('dog-statsy');
-var http = require('http');
-var stats = new Client;
+const Client = require('dog-statsy')
+const http = require('http')
+const stats = new Client({})
 
 setInterval(function(){
-  var start = new Date;
+  const start = new Date
   http.get('http://yahoo.com', function(err, res){
-    var ms = new Date - start;
-    stats.histogram('request.duration', ms, ['request:yahoo']);
-  });
-}, 1000);
+    const ms = new Date - start
+    stats.histogram('request.duration', ms, ['request:yahoo'])
+  })
+}, 1000)
 
 ```
 
