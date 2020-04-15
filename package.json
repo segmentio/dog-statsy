@@ -3,6 +3,9 @@
   "version": "1.3.0",
   "repository": "segmentio/dog-statsy",
   "description": "dogstatsd client",
+  "scripts": {
+    "test": "nyc ava -v"
+  },
   "keywords": [
     "datadog",
     "dogstatsd",
