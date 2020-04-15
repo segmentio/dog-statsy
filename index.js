@@ -14,7 +14,6 @@ class Client extends EventEmitter {
     this.buffer = ''
     this.bufferSize = bufferSize || 1024
     this.sock = dgram.createSocket('udp4')
-    this.sock.connect(this.port, this.host)
 
     const events = ['close', 'connect', 'error', 'message']
     for (let i = 0; i < events.length; i++) {
@@ -76,7 +75,7 @@ class Client extends EventEmitter {
       return
     }
 
-    this.sock.send(msg)
+    this.sock.send(msg, this.port, this.host)
   }
 
   /**
@@ -84,7 +83,7 @@ class Client extends EventEmitter {
    */
   flush() {
     if (this.buffer.length > 0) {
-      this.sock.send(this.buffer)
+      this.sock.send(this.buffer, this.port, this.host)
       this.buffer = ''
       this.emit('flush')
     }
