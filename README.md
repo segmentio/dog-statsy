@@ -1,6 +1,6 @@
 # dog-statsy [![Circle CI](https://circleci.com/gh/segmentio/dog-statsy.svg?style=shield)](https://circleci.com/gh/segmentio/dog-statsy)
 
-  A dogstatsd client.
+  A dogstatsd client, with Typescript types.
 
 ## Installation
 
