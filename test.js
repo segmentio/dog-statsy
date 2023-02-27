@@ -121,6 +121,20 @@ test('write a histogram measures with tags', async t => {
   ])
 })
 
+test('write a histogram measure with completion callback', async t => {
+  const { client, messages } = await createClient()
+  const cb = client.histogram('key')
+  cb()
+  client.flush()
+  const resolvedMessages = await messages
+  t.deepEqual(resolvedMessages.length, 1)
+  const messageRegex = /^key:(\d+)|h|$/
+  t.regex(resolvedMessages[0], messageRegex)
+  const [, value] = messageRegex.exec(resolvedMessages[0])
+  const valueAsNumber = Number.parseInt(value)
+  t.true(!Number.isNaN(valueAsNumber))
+})
+
 test('should throw an error if the trace name is not specified', t => {
   const client = new Client({})
   t.throws(() => client.trace())
