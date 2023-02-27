@@ -160,7 +160,7 @@ class Client extends EventEmitter {
       // Note: this behavior is kind of broken because we can't specify tags,
       // but we retain it in case some programs are depending on it.
       const start = new Date
-      return () => self.histogram(name, new Date - start)
+      return () => this.histogram(name, new Date - start)
     }
     this.write(name + ':' + val + '|h', tags)
   }
